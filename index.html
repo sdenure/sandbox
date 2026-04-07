@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskGrid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-logo">⬡</span>
+      <h1 class="app-title">TaskGrid</h1>
+    </div>
+    <div class="axis-controls">
+      <div class="axis-selector">
+        <label class="axis-label-text">X Axis</label>
+        <select id="x-axis-select" class="axis-select">
+          <option value="effort">Effort</option>
+          <option value="urgency">Urgency</option>
+          <option value="impact">Impact</option>
+          <option value="priority">Priority</option>
+        </select>
+      </div>
+      <span class="axis-sep">×</span>
+      <div class="axis-selector">
+        <label class="axis-label-text">Y Axis</label>
+        <select id="y-axis-select" class="axis-select">
+          <option value="effort">Effort</option>
+          <option value="urgency">Urgency</option>
+          <option value="impact">Impact</option>
+          <option value="priority" selected>Priority</option>
+        </select>
+      </div>
+    </div>
+    <button id="btn-add-task" class="btn-primary">
+      <span class="btn-icon">+</span> Add Task
+    </button>
+  </header>
+
+  <main class="app-main">
+    <section class="grid-section">
+      <div class="grid-wrapper">
+        <div class="grid-y-labels">
+          <span class="grid-axis-high" id="y-axis-high">High Priority</span>
+          <span class="grid-axis-low" id="y-axis-low">Low Priority</span>
+        </div>
+        <div class="grid-canvas-wrap">
+          <div id="grid-canvas" class="grid-canvas">
+            <div class="quadrant-overlay">
+              <div class="quadrant q-tl"><span class="quadrant-label" id="q-tl-label">Quick Wins</span></div>
+              <div class="quadrant q-tr"><span class="quadrant-label" id="q-tr-label">Major Projects</span></div>
+              <div class="quadrant q-bl"><span class="quadrant-label" id="q-bl-label">Fill-ins</span></div>
+              <div class="quadrant q-br"><span class="quadrant-label" id="q-br-label">Time Wasters</span></div>
+            </div>
+            <div id="dots-container" class="dots-container"></div>
+            <div id="empty-state" class="empty-state">
+              <div class="empty-icon">⊕</div>
+              <p>Click anywhere on the grid to add your first task</p>
+            </div>
+          </div>
+          <div class="grid-x-labels">
+            <span class="grid-axis-low" id="x-axis-low">Low Effort</span>
+            <span class="grid-axis-high" id="x-axis-high">High Effort</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Tasks</h2>
+        <div class="sidebar-controls">
+          <select id="sort-select" class="sidebar-select">
+            <option value="priority">Sort: Priority</option>
+            <option value="urgency">Sort: Urgency</option>
+            <option value="impact">Sort: Impact</option>
+            <option value="effort">Sort: Effort</option>
+            <option value="dueDate">Sort: Due Date</option>
+            <option value="createdAt">Sort: Created</option>
+          </select>
+        </div>
+      </div>
+      <div id="category-filters" class="category-filters"></div>
+      <div id="task-list" class="task-list"></div>
+      <div id="sidebar-empty" class="sidebar-empty hidden">No tasks yet. Click the grid to add one.</div>
+    </aside>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card" id="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Add Task</h3>
+        <button class="modal-close" id="btn-modal-close" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field-group">
+          <label class="field-label" for="field-title">Title <span class="required">*</span></label>
+          <input type="text" id="field-title" class="field-input" placeholder="Task name…" maxlength="120" autocomplete="off" />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="field-description">Description</label>
+          <textarea id="field-description" class="field-textarea" placeholder="Optional notes…" rows="2"></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group field-half">
+            <label class="field-label" for="field-due-date">Due Date</label>
+            <input type="date" id="field-due-date" class="field-input" />
+          </div>
+          <div class="field-group field-half">
+            <label class="field-label" for="field-category">Category / Project</label>
+            <input type="text" id="field-category" class="field-input" list="category-list" placeholder="e.g. Work, Personal…" autocomplete="off" />
+            <datalist id="category-list"></datalist>
+          </div>
+        </div>
+
+        <div class="sliders-section">
+          <h4 class="sliders-title">Dimensions</h4>
+          <div class="slider-row" data-axis="priority">
+            <label class="slider-label">
+              <span class="slider-name">Priority</span>
+              <span class="slider-value" id="val-priority">50</span>
+            </label>
+            <input type="range" id="slider-priority" class="axis-slider" min="0" max="100" value="50" data-axis="priority" />
+            <div class="slider-ends"><span>Low</span><span>Critical</span></div>
+          </div>
+          <div class="slider-row" data-axis="effort">
+            <label class="slider-label">
+              <span class="slider-name">Effort</span>
+              <span class="slider-value" id="val-effort">50</span>
+            </label>
+            <input type="range" id="slider-effort" class="axis-slider" min="0" max="100" value="50" data-axis="effort" />
+            <div class="slider-ends"><span>Trivial</span><span>Enormous</span></div>
+          </div>
+          <div class="slider-row" data-axis="urgency">
+            <label class="slider-label">
+              <span class="slider-name">Urgency</span>
+              <span class="slider-value" id="val-urgency">50</span>
+            </label>
+            <input type="range" id="slider-urgency" class="axis-slider" min="0" max="100" value="50" data-axis="urgency" />
+            <div class="slider-ends"><span>Not urgent</span><span>ASAP</span></div>
+          </div>
+          <div class="slider-row" data-axis="impact">
+            <label class="slider-label">
+              <span class="slider-name">Impact</span>
+              <span class="slider-value" id="val-impact">50</span>
+            </label>
+            <input type="range" id="slider-impact" class="axis-slider" min="0" max="100" value="50" data-axis="impact" />
+            <div class="slider-ends"><span>Minimal</span><span>Game-changer</span></div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Status</label>
+          <div class="status-toggle">
+            <button class="status-btn active" data-status="todo">Todo</button>
+            <button class="status-btn" data-status="in-progress">In Progress</button>
+            <button class="status-btn" data-status="done">Done</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Color</label>
+          <div class="color-palette" id="color-palette"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-delete" class="btn-delete hidden">Delete</button>
+        <div class="modal-footer-right">
+          <button id="btn-cancel" class="btn-secondary">Cancel</button>
+          <button id="btn-save" class="btn-primary">Save Task</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
