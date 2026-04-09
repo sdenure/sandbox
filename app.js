@@ -38,7 +38,7 @@ const QUADRANT_LABELS = {
   'impact-priority':   ['Core Work',   'High Value',     'Nice to Have','Noise'        ],
   'effort-enjoyment':  ['Sweet Spot',   'Worth It',       'Easy Chores', 'Time Wasters'],
   'urgency-enjoyment': ['Fun Rush',     'Urgent Grind',   'Play Later',  'Meh'         ],
-  'impact-enjoyment':  ['Dream Work',   'Must Do',        'Play Time',   'Avoid'       ],
+  'impact-enjoyment':  ['Limit',        'Dream Work',     'Must Do',     'Grind'       ],
   'priority-enjoyment':['Ideal Work',   'Obligation',     'Side Project','Skip'        ],
 };
 
@@ -51,6 +51,26 @@ function getQuadrantLabels(xAxis, yAxis) {
     return [tl, bl, tr, br]; // swap
   }
   return ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right'];
+}
+
+// Quadrant background colors, keyed by axis combo.
+// Order matches QUADRANT_LABELS: [TL, TR, BL, BR]
+// Empty string = fall back to CSS class default.
+const QUADRANT_COLORS = {
+  //                     TL (lowX/highY)              TR (highX/highY)             BL (lowX/lowY)               BR (highX/lowY)
+  'impact-enjoyment': ['rgba(240,71,96,0.12)',    'rgba(46,204,142,0.12)',    'rgba(140,140,160,0.09)',    'rgba(240,163,71,0.12)'],
+  //                   Limit (red)                  Dream Work (green)           Must Do (grey)               Grind (yellow)
+};
+
+function getQuadrantColors(xAxis, yAxis) {
+  const key1 = `${xAxis}-${yAxis}`;
+  const key2 = `${yAxis}-${xAxis}`;
+  if (QUADRANT_COLORS[key1]) return QUADRANT_COLORS[key1];
+  if (QUADRANT_COLORS[key2]) {
+    const [tl, tr, bl, br] = QUADRANT_COLORS[key2];
+    return [tl, bl, tr, br]; // same axis-swap as labels
+  }
+  return null; // use CSS class defaults
 }
 
 // ── State ──────────────────────────────────────────────────
@@ -201,6 +221,13 @@ function renderAxisLabels() {
   el('q-tr-label').textContent = ql2;
   el('q-bl-label').textContent = ql3;
   el('q-br-label').textContent = ql4;
+
+  // Update quadrant background colors (only for axis combos with custom colors)
+  const colors = getQuadrantColors(axisConfig.xAxis, axisConfig.yAxis);
+  ['.q-tl', '.q-tr', '.q-bl', '.q-br'].forEach((cls, i) => {
+    const qEl = document.querySelector(cls);
+    if (qEl) qEl.style.background = colors ? colors[i] : '';
+  });
 }
 
 function renderGrid() {

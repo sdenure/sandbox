@@ -398,10 +398,9 @@ input, textarea, select { font-family: inherit; }
   opacity: 1;
 }
 
-/* Dimmed (when category filter active) */
+/* Hidden when category filter is active */
 .task-dot.dimmed {
-  opacity: 0.15;
-  pointer-events: none;
+  display: none;
 }
 
 /* ============================================================
@@ -566,8 +565,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 .task-card.dimmed {
-  opacity: 0.25;
-  pointer-events: none;
+  display: none;
 }
 
 .card-color-dot {
