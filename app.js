@@ -3,10 +3,11 @@
    ============================================================ */
 
 // ── Constants ──────────────────────────────────────────────
-const STORAGE_TASKS   = 'taskgrid_tasks';
-const STORAGE_AXIS    = 'taskgrid_axis';
-const STORAGE_SORT    = 'taskgrid_sort';
-const STORAGE_VERSION = 'taskgrid_version';
+const STORAGE_TASKS      = 'taskgrid_tasks';
+const STORAGE_AXIS       = 'taskgrid_axis';
+const STORAGE_SORT       = 'taskgrid_sort';
+const STORAGE_SHOW_DONE  = 'taskgrid_show_done';
+const STORAGE_VERSION    = 'taskgrid_version';
 const CURRENT_VERSION = '1';
 const DOT_SIZE        = 38;
 
@@ -16,22 +17,29 @@ const COLOR_PALETTE = [
 ];
 
 const AXIS_OPTIONS = [
-  { key: 'effort',   label: 'Effort',   lowLabel: 'Trivial',    highLabel: 'Enormous'     },
-  { key: 'urgency',  label: 'Urgency',  lowLabel: 'Not urgent', highLabel: 'ASAP'         },
-  { key: 'impact',   label: 'Impact',   lowLabel: 'Minimal',    highLabel: 'Game-changer' },
-  { key: 'priority', label: 'Priority', lowLabel: 'Low',        highLabel: 'Critical'     },
+  { key: 'effort',    label: 'Effort',    lowLabel: 'Trivial',    highLabel: 'Enormous'     },
+  { key: 'urgency',   label: 'Urgency',   lowLabel: 'Not urgent', highLabel: 'ASAP'         },
+  { key: 'impact',    label: 'Impact',    lowLabel: 'Minimal',    highLabel: 'Game-changer' },
+  { key: 'priority',  label: 'Priority',  lowLabel: 'Low',        highLabel: 'Critical'     },
+  { key: 'enjoyment', label: 'Enjoyment', lowLabel: 'Tedious',    highLabel: 'Love it'      },
 ];
 
 const AXIS_MAP = Object.fromEntries(AXIS_OPTIONS.map(a => [a.key, a]));
 
 // Quadrant labels change based on axis selection
+// Order: [top-left, top-right, bottom-left, bottom-right]
+// top = high Y, left = low X
 const QUADRANT_LABELS = {
-  'effort-priority':  ['Quick Wins', 'Major Projects', 'Fill-ins', 'Time Wasters'],
-  'effort-urgency':   ['Easy & Urgent', 'Hard & Urgent', 'Easy, No Rush', 'Hard, No Rush'],
-  'effort-impact':    ['High Leverage', 'Big Bets', 'Low Hanging', 'Sinkholes'],
-  'urgency-priority': ['Do First', 'Schedule', 'Delegate', 'Eliminate'],
-  'urgency-impact':   ['Act Now', 'Plan It', 'Quick Win', 'Ignore'],
-  'impact-priority':  ['Core Work', 'High Value', 'Nice to Have', 'Noise'],
+  'effort-priority':   ['Quick Wins',   'Major Projects', 'Fill-ins',    'Time Wasters'],
+  'effort-urgency':    ['Easy & Urgent','Hard & Urgent',  'No Rush Easy','Hard, No Rush'],
+  'effort-impact':     ['High Leverage','Big Bets',       'Low Hanging', 'Sinkholes'   ],
+  'urgency-priority':  ['Do First',     'Schedule',       'Delegate',    'Eliminate'   ],
+  'urgency-impact':    ['Act Now',      'Plan It',        'Quick Win',   'Ignore'      ],
+  'impact-priority':   ['Core Work',   'High Value',     'Nice to Have','Noise'        ],
+  'effort-enjoyment':  ['Sweet Spot',   'Worth It',       'Easy Chores', 'Time Wasters'],
+  'urgency-enjoyment': ['Fun Rush',     'Urgent Grind',   'Play Later',  'Meh'         ],
+  'impact-enjoyment':  ['Dream Work',   'Must Do',        'Play Time',   'Avoid'       ],
+  'priority-enjoyment':['Ideal Work',   'Obligation',     'Side Project','Skip'        ],
 };
 
 function getQuadrantLabels(xAxis, yAxis) {
@@ -46,13 +54,14 @@ function getQuadrantLabels(xAxis, yAxis) {
 }
 
 // ── State ──────────────────────────────────────────────────
-let tasks         = [];
-let axisConfig    = { xAxis: 'effort', yAxis: 'priority' };
-let sortField     = 'priority';
+let tasks          = [];
+let axisConfig     = { xAxis: 'effort', yAxis: 'priority' };
+let sortField      = 'priority';
+let showCompleted  = true;
 let activeCategory = null;   // null = show all
-let editingId     = null;    // task id being edited, null = new task
-let dragState     = null;    // { id, startX, startY }
-let pendingCoords = null;    // { effort, priority, urgency, impact } from canvas click
+let editingId      = null;   // task id being edited, null = new task
+let dragState      = null;   // { id }
+let pendingCoords  = null;   // pre-filled coords from canvas click
 let touchDragState = null;
 
 // ── Persistence ────────────────────────────────────────────
@@ -74,6 +83,10 @@ function loadState() {
     if (rawSort) {
       sortField = rawSort;
     }
+    const rawShowDone = localStorage.getItem(STORAGE_SHOW_DONE);
+    if (rawShowDone !== null) {
+      showCompleted = rawShowDone === 'true';
+    }
   } catch (e) {
     console.warn('TaskGrid: failed to load state', e);
     tasks = [];
@@ -85,6 +98,7 @@ function saveState() {
     localStorage.setItem(STORAGE_TASKS, JSON.stringify(tasks));
     localStorage.setItem(STORAGE_AXIS, JSON.stringify(axisConfig));
     localStorage.setItem(STORAGE_SORT, sortField);
+    localStorage.setItem(STORAGE_SHOW_DONE, String(showCompleted));
     localStorage.setItem(STORAGE_VERSION, CURRENT_VERSION);
   } catch (e) {
     console.warn('TaskGrid: failed to save state', e);
@@ -162,6 +176,7 @@ function render() {
   renderSidebar();
   renderCategoryFilters();
   updateEmptyState();
+  renderToggleDoneBtn();
 }
 
 function renderAxisSelects() {
@@ -200,6 +215,11 @@ function renderGrid() {
 
   const toKeep = new Set();
   tasks.forEach(task => {
+    // Hide completed dots when showCompleted is off
+    if (!showCompleted && task.status === 'done') {
+      existingDots.get(task.id)?.remove();
+      return;
+    }
     toKeep.add(task.id);
     const pos = dotPosition(task);
     let dot = existingDots.get(task.id);
@@ -259,22 +279,16 @@ function renderSidebar() {
   const emptyEl = document.getElementById('sidebar-empty');
   if (!listEl) return;
 
-  const sorted = sortTasks([...tasks], sortField);
+  const visibleTasks = tasks.filter(t => showCompleted || t.status !== 'done');
+  const sorted = sortTasks([...visibleTasks], sortField);
 
-  // Reconcile cards
-  const existing = new Map(
-    Array.from(listEl.querySelectorAll('.task-card'))
-      .map(c => [c.dataset.id, c])
-  );
-
-  // Clear and re-insert in sort order (simpler than full reconcile for sidebar)
   listEl.innerHTML = '';
   sorted.forEach(task => {
     const card = createCardElement(task);
     listEl.appendChild(card);
   });
 
-  emptyEl.classList.toggle('hidden', tasks.length > 0);
+  emptyEl.classList.toggle('hidden', visibleTasks.length > 0);
   applyDimming();
 }
 
@@ -334,7 +348,15 @@ function renderCategoryFilters() {
 
 function updateEmptyState() {
   const emptyEl = document.getElementById('empty-state');
-  if (emptyEl) emptyEl.classList.toggle('hidden', tasks.length > 0);
+  const visibleOnGrid = tasks.filter(t => showCompleted || t.status !== 'done');
+  if (emptyEl) emptyEl.classList.toggle('hidden', visibleOnGrid.length > 0);
+}
+
+function renderToggleDoneBtn() {
+  const btn = document.getElementById('btn-toggle-done');
+  if (!btn) return;
+  btn.classList.toggle('active', showCompleted);
+  btn.setAttribute('aria-pressed', String(showCompleted));
 }
 
 function sortTasks(arr, field) {
@@ -385,7 +407,7 @@ function onCanvasClick(e) {
   if (e.target.closest('.task-dot')) return;
   const canvas = document.getElementById('grid-canvas');
   const coords = coordsFromEvent(canvas, e.clientX, e.clientY);
-  pendingCoords = { effort: 0.5, urgency: 0.5, impact: 0.5, priority: 0.5, ...coords };
+  pendingCoords = { effort: 0.5, urgency: 0.5, impact: 0.5, priority: 0.5, enjoyment: 0.5, ...coords };
   openModal(null, pendingCoords);
 }
 
@@ -509,7 +531,7 @@ function openModal(taskId, preCoords) {
   el('field-category').value    = task?.category     || '';
 
   // Sliders
-  const defaults = { priority: 0.5, effort: 0.5, urgency: 0.5, impact: 0.5 };
+  const defaults = { priority: 0.5, effort: 0.5, urgency: 0.5, impact: 0.5, enjoyment: 0.5 };
   const vals = task ? task : { ...defaults, ...preCoords };
   AXIS_OPTIONS.forEach(({ key }) => {
     const slider = document.getElementById(`slider-${key}`);
@@ -727,6 +749,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (xSel) { xSel.value = axisConfig.xAxis; xSel.addEventListener('change', onAxisChange.bind(xSel)); }
   if (ySel) { ySel.value = axisConfig.yAxis; ySel.addEventListener('change', onAxisChange.bind(ySel)); }
 
+  // Wire up show/hide completed toggle
+  document.getElementById('btn-toggle-done')?.addEventListener('click', () => {
+    showCompleted = !showCompleted;
+    saveState();
+  });
+
   // Wire up sort
   const sortSel = document.getElementById('sort-select');
   if (sortSel) {
@@ -749,7 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Wire up header Add Task button
   document.getElementById('btn-add-task')?.addEventListener('click', () => {
     pendingCoords = null;
-    openModal(null, { effort: 0.5, urgency: 0.5, impact: 0.5, priority: 0.5 });
+    openModal(null, { effort: 0.5, urgency: 0.5, impact: 0.5, priority: 0.5, enjoyment: 0.5 });
   });
 
   // Wire up modal buttons

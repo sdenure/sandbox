@@ -23,6 +23,7 @@
           <option value="urgency">Urgency</option>
           <option value="impact">Impact</option>
           <option value="priority">Priority</option>
+          <option value="enjoyment">Enjoyment</option>
         </select>
       </div>
       <span class="axis-sep">×</span>
@@ -33,6 +34,7 @@
           <option value="urgency">Urgency</option>
           <option value="impact">Impact</option>
           <option value="priority" selected>Priority</option>
+          <option value="enjoyment">Enjoyment</option>
         </select>
       </div>
     </div>
@@ -74,11 +76,15 @@
       <div class="sidebar-header">
         <h2 class="sidebar-title">Tasks</h2>
         <div class="sidebar-controls">
+          <button id="btn-toggle-done" class="toggle-done-btn" title="Show/hide completed tasks" aria-pressed="true">
+            <span class="toggle-done-icon">✓</span> Done
+          </button>
           <select id="sort-select" class="sidebar-select">
             <option value="priority">Sort: Priority</option>
             <option value="urgency">Sort: Urgency</option>
             <option value="impact">Sort: Impact</option>
             <option value="effort">Sort: Effort</option>
+            <option value="enjoyment">Sort: Enjoyment</option>
             <option value="dueDate">Sort: Due Date</option>
             <option value="createdAt">Sort: Created</option>
           </select>
@@ -154,6 +160,14 @@
             </label>
             <input type="range" id="slider-impact" class="axis-slider" min="0" max="100" value="50" data-axis="impact" />
             <div class="slider-ends"><span>Minimal</span><span>Game-changer</span></div>
+          </div>
+          <div class="slider-row" data-axis="enjoyment">
+            <label class="slider-label">
+              <span class="slider-name">Enjoyment</span>
+              <span class="slider-value" id="val-enjoyment">50</span>
+            </label>
+            <input type="range" id="slider-enjoyment" class="axis-slider" min="0" max="100" value="50" data-axis="enjoyment" />
+            <div class="slider-ends"><span>Tedious</span><span>Love it</span></div>
           </div>
         </div>
 

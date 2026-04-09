@@ -446,6 +446,44 @@ input, textarea, select { font-family: inherit; }
 
 .sidebar-select:focus { outline: none; border-color: var(--color-accent); }
 
+.sidebar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle-done-btn {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+
+.toggle-done-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.toggle-done-btn.active {
+  background: var(--color-accent-dim);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.toggle-done-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
 /* Category filters */
 .category-filters {
   padding: 10px 16px;
